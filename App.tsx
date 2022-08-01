@@ -61,6 +61,46 @@ function captureRequests() {
     }
     this.origSend(body);
   };
+
+  // WebSocket.prototype.originalAddEventListener = WebSocket.prototype.addEventListener;
+  // WebSocket.prototype.addEventListener = function (event, handler) {
+  //   console.log('asked', event, handler);
+  //   this.originalAddEventListener(event, handler);
+
+  //   if(event === 'message') {
+  //     this.originalAddEventListener(event, (data) => {
+  //       window.ReactNativeWebView.postMessage(
+  //         JSON.stringify(
+  //           {
+  //             type: 'ws',
+  //             data: data
+  //           }
+  //         );
+  //       );
+  //     });
+  //   };
+  // };
+
+  const handler = {
+  };
+
+  handler.construct = function(target, args) {
+    const instance = new target(...args);
+    instance.addEventListener('message', function(data) {
+      const res = String.fromCharCode.apply(null, new Uint8Array(data.data))
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify(
+          {
+            type: 'ws',
+            data: data,
+            res,
+          }
+        )
+      );
+    });
+    return instance;
+  };
+  WebSocket = new Proxy(WebSocket, handler);
   
   true;
   `;
@@ -97,7 +137,17 @@ async function makeApiCall(params: {
   console.log(result.ok, result.headers, result.status);
   
   result.json().then(d => {
-    console.log('xxx', d)
+    // const [{ media_or_ad: item1 }, { media_or_ad: item2 }] = d.feed_items;
+    // delete item1.image_versions2;
+    // delete item2.image_versions2;
+
+    // delete item1.carousel_media;
+    // delete item2.carousel_media;
+
+    // console.log('xxx', item1);
+    // console.log('yyy', item2);
+
+    console.log('aaa', d.feed_items.map((i: any) => i.media_or_ad.taken_at))
   })
 }
 
@@ -207,19 +257,23 @@ export default function App() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <WebView 
-        source={{ uri: 'https://instagram.com' }}
+        source={{ uri: 'https://instagram.com/direct/inbox' }}
         onMessage={(event) => {
           const parsedData = JSON.parse(event.nativeEvent.data);
-          if (parsedData.url.includes('login')) {
-            console.log(parsedData);
-            login(parsedData);
+          if (parsedData.type === 'ws') {
+            console.log(parsedData, Date.now());
+            return;
           }
-          if (parsedData.url.includes('feed/timeline')) {
-            console.log(parsedData);
-            if (!parsedData.result) {
-              makeApiCall(parsedData);
-            }
-          }
+          // if (parsedData.url.includes('login')) {
+          //   console.log(parsedData);
+          //   login(parsedData);
+          // }
+          // if (parsedData.url.includes('feed/timeline')) {
+          //   console.log(parsedData);
+          //   if (!parsedData.result) {
+          //     // makeApiCall(parsedData);
+          //   }
+          // }
         }}
         injectedJavaScriptBeforeContentLoaded={captureRequests()}
       />
