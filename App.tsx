@@ -1,10 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { AsyncStorage, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native";
 import { WebView } from 'react-native-webview';
+import { instagramSDK, InstagramSDK } from 'instagram-sdk';
 // import { TimelineFeed } from './feed';
 
 import { sample } from 'lodash';
+import { CapturedRequest } from 'instagram-sdk/dist/components/request-capture/captured-request';
 
 interface TimelineFeedResponse {
   num_results: number;
@@ -338,6 +340,27 @@ enum TimelineFeedPaginationSource {
     url: string,
     method: string,
   }) {
+    console.log(
+      'sending request',
+      params.url,
+      {
+        method: params.method,
+        headers: {
+          ...params.requestHeaders,
+          'Host': 'i.instagram.com',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Origin': 'https://i.instagram.com',
+          'Alt-Used': 'i.instagram.com',
+          'Connection': 'keep-alive',
+          'Sec-Fetch-Dest': 'empty',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Site': 'same-origin',
+        },
+        body: params.body,
+      }
+    );
     const result = await fetch(
       params.url,
       {
@@ -618,28 +641,63 @@ export default function App() {
   
   
 
-
+  const instagramClient = instagramSDK;
+  instagramClient.loginService.requestCaptureComponent.addBlacklistedUrlPhrases(['login']);
+  AsyncStorage.getItem('authenticatedState').then(authenicatedStateString => {
+    if (authenicatedStateString) {
+      console.log('state loaded', authenicatedStateString);
+      instagramClient.loginService.authenticatedStateComponent.loadState(authenicatedStateString);
+      console.log('auu', instagramClient.loginService.authenticatedStateComponent)
+      const value = instagramClient.loginService.authenticatedStateComponent.valueOf();
+      console.log('v', value);
+      if (value.cookie && value.appId && value.deviceId) {
+        instagramClient.timelineFeedService.next().then(data => {
+          console.log('feeeeed', data)
+        });
+      }
+    }
+     else {
+      instagramClient.loginService.startCapturingLoginRequest();
+      instagramClient.loginService.awaitAuthentication()
+      .then(result => {
+        console.log('ccc', result);
+        const authenicatedStateString = JSON.stringify(result.valueOf());
+        AsyncStorage.setItem('authenticatedState', authenicatedStateString).then(() => console.log('state saved', authenicatedStateString));
+        
+        instagramClient.timelineFeedService.next().then(data => {
+          console.log('feeeeed', data)
+        });
+      });
+    }
+  }).catch(e => {
+    console.log('baaaa', e);
+  });
+  
+  
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <WebView 
         source={{ uri: 'https://instagram.com' }}
-        onMessage={(event) => {
-          const parsedData = JSON.parse(event.nativeEvent.data);
-          if (parsedData.url.includes('login')) {
-            console.log(parsedData);
-            login(parsedData);
-          }
-          if (parsedData.url.includes('feed/timeline')) {
-            console.log(parsedData);
-            const bodyObject = JSON.parse('{"' + decodeURI(parsedData.body).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g,'":"') + '"}')
-            const feed = new TimelineFeed({ paginationSource: 'following' });
-            feed.request({}, bodyObject.device_id, parsedData.requestHeaders)
-            .then(d => {
-              console.log('zzzzz', d);
-            });
-          }
-        }}
-        injectedJavaScriptBeforeContentLoaded={captureRequests()}
+        // onMessage={(event) => {
+        //   // console.log('xxx', event);
+        //   const parsedData = JSON.parse(event.nativeEvent.data);
+        //   if (parsedData.url.includes('login')) {
+        //     console.log(parsedData);
+        //     login(parsedData);
+        //   }
+        //   if (parsedData.url.includes('feed/timeline')) {
+        //     console.log(parsedData);
+        //     const bodyObject = JSON.parse('{"' + decodeURI(parsedData.body).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g,'":"') + '"}')
+        //     const feed = new TimelineFeed({ paginationSource: 'following' });
+        //     feed.request({}, bodyObject.device_id, parsedData.requestHeaders)
+        //     .then(d => {
+        //       console.log('zzzzz', d);
+        //     });
+        //   }
+        // }}
+        // injectedJavaScriptBeforeContentLoaded={ captureRequests() }
+        onMessage={ instagramClient.loginService.requestCaptureComponent.onMessageReceived.bind(instagramClient.loginService.requestCaptureComponent) }
+        injectedJavaScriptBeforeContentLoaded={ instagramClient.loginService.requestCaptureComponent.getInjectableJavaScript() }
       />
     </SafeAreaView>
   );
