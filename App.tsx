@@ -642,42 +642,11 @@ export default function App() {
   
 
   const instagramClient = instagramSDK;
-  instagramClient.loginService.requestCaptureComponent.addBlacklistedUrlPhrases(['login']);
-  AsyncStorage.getItem('authenticatedState').then(authenicatedStateString => {
-    if (authenicatedStateString) {
-      console.log('state loaded', authenicatedStateString);
-      instagramClient.loginService.authenticatedStateComponent.loadState(authenicatedStateString);
-      console.log('auu', instagramClient.loginService.authenticatedStateComponent)
-      const value = instagramClient.loginService.authenticatedStateComponent.valueOf();
-      console.log('v', value);
-      if (value.cookie && value.appId && value.deviceId) {
-        instagramClient.timelineFeedService.next().then(data => {
-          console.log('feeeeed', data)
-        });
-      }
-    }
-     else {
-      instagramClient.loginService.startCapturingLoginRequest();
-      instagramClient.loginService.awaitAuthentication()
-      .then(result => {
-        console.log('ccc', result);
-        const authenicatedStateString = JSON.stringify(result.valueOf());
-        AsyncStorage.setItem('authenticatedState', authenicatedStateString).then(() => console.log('state saved', authenicatedStateString));
-        
-        instagramClient.timelineFeedService.next().then(data => {
-          console.log('feeeeed', data)
-        });
-      });
-    }
-  }).catch(e => {
-    console.log('baaaa', e);
-  });
-  
-  
+  instagramClient.messagesService.startCapturing();  
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <WebView 
-        source={{ uri: 'https://instagram.com' }}
+        source={{ uri: 'https://instagram.com/direct/inbox' }}
         // onMessage={(event) => {
         //   // console.log('xxx', event);
         //   const parsedData = JSON.parse(event.nativeEvent.data);
@@ -696,8 +665,8 @@ export default function App() {
         //   }
         // }}
         // injectedJavaScriptBeforeContentLoaded={ captureRequests() }
-        onMessage={ instagramClient.loginService.requestCaptureComponent.onMessageReceived.bind(instagramClient.loginService.requestCaptureComponent) }
-        injectedJavaScriptBeforeContentLoaded={ instagramClient.loginService.requestCaptureComponent.getInjectableJavaScript() }
+        onMessage={ instagramClient.messagesService.websocketMessageCaptureComponent.onMessageReceived.bind(instagramClient.messagesService.websocketMessageCaptureComponent) }
+        injectedJavaScriptBeforeContentLoaded={ instagramClient.messagesService.websocketMessageCaptureComponent.getInjectableJavaScript() }
       />
     </SafeAreaView>
   );
