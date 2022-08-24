@@ -642,7 +642,10 @@ export default function App() {
   
 
   const instagramClient = instagramSDK;
-  instagramClient.messagesService.startCapturing();  
+  instagramClient.messagesService.startCapturing();
+  instagramClient.messagesService.subscribe().subscribe( data => {
+    console.log('subscribed data', data);
+  });
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <WebView 
