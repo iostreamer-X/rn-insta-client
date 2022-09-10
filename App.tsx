@@ -3,12 +3,27 @@ import { SafeAreaView } from "react-native";
 import { WebView } from 'react-native-webview';
 import { instagramSDK } from 'instagram-sdk';
 
+
+
 export default function App() {
   const instagramClient = instagramSDK;
-  instagramClient.messagesService.startCapturing();
-  instagramClient.messagesService.subscribe().subscribe( data => {
-    console.log('subscribed data', data);
-  });
+  (async () => {
+    await instagramSDK.loginService.androidLogin({
+      urlWithParams: 'http://192.168.50.81:8080/v2/instagram/android/login-request',
+      method: 'POST',
+      body: {
+        username: 'test',
+        password: 'test'
+      }
+    });
+
+    const state = instagramClient.loginService.authenticatedStateComponent.android
+    console.log(state.androidState);
+  })();
+  // instagramClient.messagesService.startCapturing();
+  // instagramClient.messagesService.subscribe().subscribe( data => {
+  //   console.log('subscribed data', data);
+  // });
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <WebView 
