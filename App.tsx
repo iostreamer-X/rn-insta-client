@@ -8,17 +8,37 @@ import { instagramSDK } from 'instagram-sdk';
 export default function App() {
   const instagramClient = instagramSDK;
   (async () => {
-    await instagramSDK.loginService.androidLogin({
-      urlWithParams: 'http://192.168.50.81:8080/v2/instagram/android/login-request',
-      method: 'POST',
-      body: {
-        username: 'test',
-        password: 'test'
+    const stateToInitialize = await (async () => {
+      const rawStateString = await AsyncStorage.getItem('state');
+      if (rawStateString) {
+        console.log('found local state');
+        return JSON.parse(rawStateString) as Object;
       }
-    });
+      await instagramSDK.loginService.androidLogin({
+        urlWithParams: 'http://192.168.219.80:8080/v2/instagram/android/login-request',
+        method: 'POST',
+        body: {
+          username: 'rahultakesachillpill',
+          password: 'AUDacity6!void'
+        }
+      });
+  
+      const state = instagramClient.loginService.authenticatedStateComponent.android;
+      console.log(state.authenticatedValue());
+      await AsyncStorage.setItem('state', JSON.stringify(state.authenticatedValue()));
+      return;
+    })();
 
-    const state = instagramClient.loginService.authenticatedStateComponent.android
-    console.log(state.androidState);
+    if (stateToInitialize) {
+      console.log('initializing using local state');
+      instagramClient.loginService.authenticatedStateComponent.android.loadState(stateToInitialize)
+    }
+    console.log('state', instagramClient.loginService.authenticatedStateComponent.android.authenticatedValue())
+
+    const feedData = await instagramClient.reelsFeedService.next({});
+    console.log('feeeeed', feedData);
+
+
   })();
   // instagramClient.messagesService.startCapturing();
   // instagramClient.messagesService.subscribe().subscribe( data => {
