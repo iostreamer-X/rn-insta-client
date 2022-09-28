@@ -18,8 +18,8 @@ export default function App() {
         urlWithParams: 'http://192.168.219.80:8080/v2/instagram/android/login-request',
         method: 'POST',
         body: {
-          username: 'rahultakesachillpill',
-          password: 'AUDacity6!void'
+          username: 'test',
+          password: 'test'
         }
       });
   
